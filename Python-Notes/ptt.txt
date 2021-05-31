@@ -1,0 +1,370 @@
+import pandas as pd
+import os
+import numpy as np
+print(os.getcwd())
+
+tsh=pd.read_csv('C:\\Users\\Rohan.Madhale\\Desktop\\2cx\\TSH.csv')
+# tsh.shape
+tsh.columns = [x.lower() for x in tsh.columns]
+tsh['sales']=tsh['sales'].astype(float)
+#
+
+cch=pd.read_csv('C:\\Users\\Rohan.Madhale\\Desktop\\2cx\\CCH.csv')
+cch.shape
+cch.columns = [x.lower() for x in cch.columns]
+cch1=cch[:]
+cch1['sales']=cch1['sales'].astype(float)
+
+#
+
+sch=pd.read_csv('C:\\Users\\Rohan.Madhale\\Desktop\\2cx\\SCH.csv')
+sch.columns = [x.lower() for x in sch.columns]
+sch1=sch[:]
+sch1['sales']=sch1['sales'].astype(float)
+# sch.shape
+# cch1.head()
+
+tsh.head()
+# tsh.shape
+
+tsh.dtypes
+
+def checkconstraint(x,y):
+    if x.sum()==y.sum():
+        print('Constraint: True')
+    else:
+        print('Constraint: Flase')
+        
+
+checkconstraint(tsh.iloc[:,-1],cch.iloc[:,-1])
+
+def combinecolumn_dept_class(x):
+    if (( ('dept') and ('class') ) in x.columns):
+        x['deptclass']=x['dept'].map(str)+x['class'].map(str)
+        del x['dept']
+        del x['class']
+        #print(x)
+        x=pd.DataFrame(x)
+        return x
+    else:
+        print('error')
+
+new_cch=combinecolumn_dept_class(cch1)
+# new_cch=new_cch.astype(float)
+new_cch.head()
+
+new_cch.shape
+
+
+new_cch.dtypes
+
+
+
+new_sch=combinecolumn_dept_class(sch1)
+new_sch.head()
+
+new_sch.dtypes
+
+def totaldeptsales_grpby_deptclass(x):
+    #a=pd.DataFrame(x.iloc[:,1:]].groupby('deptclass').sum())
+    a=pd.DataFrame(x[['deptclass','sales']].groupby('deptclass').sum())
+    a=pd.DataFrame(a)
+    return a
+    #print(a.head())
+
+new_sch_deptclass_sales=totaldeptsales_grpby_deptclass(new_sch)
+new_sch_deptclass_sales.head()
+
+new_sch_deptclass_sales.shape
+
+def deptsalesdiff1(x,y):
+    
+    e=x.groupby('deptclass').sum()
+#     f=y[['sales','deptclass']]
+    f=y
+    g=f.groupby('deptclass').sum()
+    #g=f[['deptclass','sales']].groupby('deptclass').sum()
+    #g=e.iloc[:,-1:]-f.iloc[:,-1:]
+#     h=e['sales'].map(int)-g['sales'].map(int)
+    h=e['sales']-g['sales']
+    h=pd.DataFrame(h)
+    return h
+    #print(g)
+
+deptclass_sales_diff=deptsalesdiff1(new_cch,new_sch_deptclass_sales)
+# a3.head()
+
+deptclass_sales_diff.head()
+
+# mutate total sale dept wise
+def mutate_sales_by_deptclass(x,y):
+    h=y.groupby('deptclass').sum()
+    i=h.iloc[:,-1:]
+    j=pd.merge(x,i,on='deptclass',how='inner')
+    j.columns=['str_nbr','sales','deptclass','totaldeptsales']
+    j=pd.DataFrame(j)
+    return(j)
+
+new_sch_mutated_sales_deptclass=mutate_sales_by_deptclass(new_sch,new_sch)
+
+new_sch_mutated_sales_deptclass.head()
+
+def dept_pen(x):
+    x['dept_pen']=x['sales']/x['totaldeptsales']
+    return x
+    #print(x.head())
+
+def str_pen(x):
+    x['dept_pen']=x['sales']/x['totalstrsales']
+    return x
+
+new_sch_mutated_sales_deptclass_dept_pen=dept_pen(new_sch_mutated_sales_deptclass)
+
+new_sch_mutated_sales_deptclass_dept_pen.head()
+
+#mutate deptclass sales diff 
+
+def mutate_deptclass_salesdiff(x,y):
+    a=pd.merge(x,y,on='deptclass',how='left')
+    a=pd.DataFrame(a)
+    a.columns=['str_nbr','sales','deptclass','totaldeptsales','dept_pen','deptsalesdiff']
+    return a
+
+new_sch_mutated_sales_deptclass_dept_pen__depclass_salesdiff=mutate_deptclass_salesdiff(new_sch_mutated_sales_deptclass_dept_pen,deptclass_sales_diff)
+# new_sch_mutated_sales_deptclass_dept_pen__depclass_salesdiff.columns=['str_nbr','sales','deptclass','totaldeptsales','dept_pen','deptsalesdiff']
+
+new_sch_mutated_sales_deptclass_dept_pen__depclass_salesdiff.head()
+
+def newsales(x):
+    x['newsales0']=((x['dept_pen']*x['deptsalesdiff'])+x['sales'])
+    x=pd.DataFrame(x)
+    return x
+
+def newsales_str(x):
+    x['newsales0']=((x['dept_pen']*x['strsalesdiff'])+x['sales'])
+    x=pd.DataFrame(x)
+    return x
+
+gen_newsales0_on_newsch=newsales(new_sch_mutated_sales_deptclass_dept_pen__depclass_salesdiff)
+
+gen_newsales0_on_newsch.head()
+
+def totalstrsales(x):
+    a=x[['str_nbr','newsales0']]
+    a.columns=['str_nbr','sales']
+    b=pd.DataFrame(a.groupby('str_nbr').sum())
+    b=pd.DataFrame(b)
+    return b
+
+new_str_nbr_sales=totalstrsales(gen_newsales0_on_newsch)
+
+new_str_nbr_sales.head()
+
+def str_nbr_salesdiff(x,y):
+    a=x.groupby('str_nbr').sum().iloc[:,-1:]
+    b=y.groupby('str_nbr').sum().iloc[:,-1:]
+    c=a['sales']-b['sales']
+#     c=a['sales'].map(int)-b['sales'].map(int)
+    c=pd.DataFrame(c)
+    return c
+
+def mutate_str_nbr_sales_diff(x,y):
+    a=pd.merge(x,y,on='str_nbr',how='left')
+    a=pd.DataFrame(a)
+    a.columns=['str_nbr','sales','deptclass','totalstrsales','strsalesdiff']
+    return a
+
+# def mutatecolumn_str(x,y):
+#     a=x
+#     b=pd.merge(a,y,on='str_nbr',how='left')# b.columns=['str_nbr','deptclass','sales','']
+#     c=pd.DataFrame(b)
+#     return c
+
+new_str_nbr_sales_diff=str_nbr_salesdiff(tsh,new_str_nbr_sales)
+
+new_str_nbr_sales_diff.head()
+
+# new_deptclass_sales_diff=deptsalesdiff1(new_cch,gen_newsales0_on_newsch)
+
+# new_deptclass_sales_diff.head()
+
+def newdata(x):
+    y=x[['str_nbr','newsales0','deptclass']]
+    y.columns=['str_nbr','sales','deptclass']
+    y=pd.DataFrame(y)
+    return y
+
+gen_newdata_sch=newdata(gen_newsales0_on_newsch)
+
+gen_newdata_sch.head()
+
+#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#S
+
+def new_sales_by_str_nbr(x,y):
+    a=y[['str_nbr','sales']]
+    b=a.groupby('str_nbr').sum()
+    b=pd.DataFrame(b)
+    c=pd.merge(x,b,on='str_nbr',how='left')
+    c=pd.DataFrame(c)
+    c.columns=['str_nbr','sales','deptclass','totalstrsales']
+    return c
+
+mutate_str_nbr_sales_diff((new_sales_by_str_nbr(gen_newdata_sch,gen_newdata_sch)),(str_nbr_salesdiff(tsh,totalstrsales(gen_newsales0_on_newsch)))).head()
+
+str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(gen_newdata_sch,gen_newdata_sch)),(str_nbr_salesdiff(tsh,totalstrsales(gen_newsales0_on_newsch))))).head()
+
+newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(gen_newdata_sch,gen_newdata_sch)),(str_nbr_salesdiff(tsh,totalstrsales(gen_newsales0_on_newsch)))))).head()
+
+newdata(newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(gen_newdata_sch,gen_newdata_sch)),(str_nbr_salesdiff(tsh,totalstrsales(gen_newsales0_on_newsch))))))).head()
+
+# totalstrsales(newsales(mutate_deptclass_salesdiff(dept_pen(mutate_sales_by_deptclass(gen_newdata_sch,gen_newdata_sch)),deptsalesdiff1(new_cch,totaldeptsales_grpby_deptclass(gen_newdata_sch))))).head()
+deptsalesdiff1(new_cch,(newdata(newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(newdata(gen_newsales0_on_newsch),newdata(gen_newsales0_on_newsch))),(str_nbr_salesdiff(tsh,totalstrsales(gen_newsales0_on_newsch))))))))).head()
+
+# str_nbr_salesdiff(tsh,(newdata(newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(gen_newdata_sch,gen_newdata_sch)),(str_nbr_salesdiff(tsh,totalstrsales(gen_newsales0_on_newsch))))))))).head()
+
+
+
+a1=newdata(newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(gen_newdata_sch,gen_newdata_sch)),(str_nbr_salesdiff(tsh,totalstrsales(gen_newsales0_on_newsch)))))))
+a1.head()
+
+a2=deptsalesdiff1(new_cch,(newdata(newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(gen_newdata_sch,gen_newdata_sch)),(str_nbr_salesdiff(tsh,totalstrsales(gen_newsales0_on_newsch)))))))))
+a2.head()
+
+a3=newsales(mutate_deptclass_salesdiff(dept_pen(mutate_sales_by_deptclass(a1,a1)),a2))
+a3.head()
+
+b1=newdata(a3)
+b1.head()
+
+# (tsh.groupby('str_nbr').sum().iloc[:,-1:])-(b1.groupby('str_nbr').sum().iloc[:,-1:])
+
+b2=str_nbr_salesdiff(tsh,totalstrsales(a3))
+
+b2.head()
+
+b3=newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(b1,b1)),(str_nbr_salesdiff(tsh,totalstrsales(a3))))))
+b3.head()
+
+#2nd it
+
+c1=newdata(b3)
+c1.head()
+
+c2=deptsalesdiff1(new_cch,b3)
+c2.head()
+
+c3=newsales(mutate_deptclass_salesdiff(dept_pen(mutate_sales_by_deptclass(c1,c1)),c2))
+c3.head()
+
+d1=newdata(c3)
+d1.head()
+
+d2=str_nbr_salesdiff(tsh,totalstrsales(c3))
+d2.head()
+
+d3=newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(d1,d1)),(str_nbr_salesdiff(tsh,totalstrsales(c3))))))
+d3.head()
+
+#3rd it
+
+e1=newdata(d3)
+e1.head()
+
+e2=deptsalesdiff1(new_cch,d3)
+e2.head()
+
+e3=newsales(mutate_deptclass_salesdiff(dept_pen(mutate_sales_by_deptclass(e1,e1)),e2))
+e3.head()
+
+f1=newdata(e3)
+f1.head()
+
+f2=(str_nbr_salesdiff(tsh,totalstrsales(e3)))
+f2.head()
+
+# f2[['sales']].head()
+
+f3=newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(f1,f1)),(str_nbr_salesdiff(tsh,totalstrsales(e3))))))
+f3.head()
+
+f4=newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(newdata(e3),newdata(e3))),(str_nbr_salesdiff(tsh,totalstrsales(e3))))))
+f4.head()
+
+def cutvalue(x):
+    z=x['sales']
+    a=max(abs(z))
+#     a=max(z)
+    return a
+
+# writer = ExcelWriter('U4SysOutput.xlsx')
+while cutvalue(e2)>1 and cutvalue(f2)>1:
+    e1=newdata(d3)
+    e2=deptsalesdiff1(new_cch,d3)
+    e3=newsales(mutate_deptclass_salesdiff(dept_pen(mutate_sales_by_deptclass(e1,e1)),e2))
+    f1=newdata(e3)
+    f2=str_nbr_salesdiff(tsh,totalstrsales(e3))
+    f3=newsales_str(str_pen(mutate_str_nbr_sales_diff((new_sales_by_str_nbr(f1,f1)),(str_nbr_salesdiff(tsh,totalstrsales(e3))))))
+    
+    d3=f3
+    
+    print('diff are : %s %s' %(e2['sales'] ,f2['sales']))
+    d3.to_csv('C:\\Users\\Rohan.Madhale\\Desktop\\2cx\\newsch.csv', index=False)
+#     print(newdata(d3))
+    
+#     if (cutvalue(e2)==0 and cutvalue(f2)==0):
+#         print('diff are : %s %s' %(e2['sales'] ,f2['sales']))
+#         print(e1)
+# #         x=newdata(f3)
+# #         write_csv(x)
+# #         /x.to_csv(r'C:\Users\Admin\Desktop\file3.csv', index=False)
+# #         x.to_csv('C:\\Users\\Rohan.Madhale\\Desktop\\2cx\\newsch.csv', index=False)
+#         break
+
+
+d3
+
+x1='211'
+
+new_sch.dtypes
+
+
+
+
+
+
+
+#Joining store_sales table with store_dept_sales
+store_dept_sales_initial = pd.merge(store_dept_sales_initial,store_sales[['Store','Store_Sales']], on = 'Store', how = 'left')
+store_dept_sales = pd.merge(store_dept_sales_initial,dept_sales[['Department','Dept_Sales']], on = 'Department', how = 'left')
+
+
+
+
+
+
+
+error = 10
+while error > 0.0001:
+    contribution_store = []
+    for i in range(len(store_dept_sales['Store'])):
+        contribution_store.append(float(store_dept_sales.iloc[i,2])/float(store_dept_sales.groupby('Store').get_group(store_dept_sales.iloc[i,0])['Sales'].sum()))
+    
+    for i in range(len(store_dept_sales['Store'])):
+        store_dept_sales.iloc[i,2] = float(store_dept_sales.iloc[i,3])*float(contribution_store[i])
+    
+    contribution_dept = []
+    for i in range(len(store_dept_sales['Department'])):
+        contribution_dept.append(float(store_dept_sales.iloc[i,2])/float(store_dept_sales.groupby('Department').get_group(store_dept_sales.iloc[i,1])['Sales'].sum()))
+    
+    for i in range(len(store_dept_sales['Store'])):
+        store_dept_sales.iloc[i,2] = float(store_dept_sales.iloc[i,4])*float(contribution_dept[i])
+
+    store_error = []
+    for i in range(len(store_sales)):
+        store_error.append(((store_dept_sales.groupby('Store').get_group(store_sales.iloc[i,0])['Sales'].sum()) - store_sales.iloc[i,1])**2)
+    
+    dept_error = []
+    for i in range(len(dept_sales)):
+        dept_error.append(((store_dept_sales.groupby('Department').get_group(dept_sales.iloc[i,0])['Sales'].sum()) - dept_sales.iloc[i,1])**2)
+    
+    error = math.sqrt(sum(store_error)+sum(dept_error))

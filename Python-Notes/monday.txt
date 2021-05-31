@@ -1,0 +1,1 @@
+condition statement used for While loop is itself created in it;
