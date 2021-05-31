@@ -1,0 +1,39 @@
+Git is a distributed version control system
+
+Project management tool
+
+Repository is a place where we have our codes
+
+
+Distributed
+
+Local repository 
+Server repository
+
+
+Everyone has own shared repository
+
+Trunk based development - create branches to avoid data loss
+
+
+Tabs
+1. Code
+	Cloning - git clone (Directory address)
+2. Commits
+	Everytime you change in repository you create a commit
+	Versioning is done every time you commit
+	
+	git add file.txt
+	git commit -m "Update message"
+	git push
+	
+3. Create a new branch and start a pull request - When you dont want to add changes in the master branch
+4. merging two branches - Compare and pull request - commit merge - merge pull request - confirm
+
+Github forks
+Used to contribute into someone else's project - send merge requeset - accept merge request
+
+
+Creating a new branch in git bash
+git branch 
+git checkout new_branch_name
